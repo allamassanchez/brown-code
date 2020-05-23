@@ -1,0 +1,408 @@
+data Seam-Energy:
+  | seam-energy(seam :: List<Number>, energy :: Number)
+end
+
+fun brightness(colr :: Color) -> Number:
+  doc: ```calculates brightness given a color```
+  colr.red + colr.blue + colr.green
+where:
+  brightness(color(1, 2, 3)) is 6
+  brightness(color(0, 0, 0)) is 0
+  brightness(color(5, 2, 10)) is 17
+  brightness(color(200, 30, 50)) is 280
+end
+
+fun energy-formula(a :: Number, 
+    b :: Number, 
+    c :: Number, 
+    d :: Number, 
+    f :: Number,
+    g :: Number,
+    h :: Number,
+    i :: Number) -> Number:
+  doc: ```calculates the energy of a pixel based on 
+       brightness of surrounding pixels```
+  x-energy = (((a + (2 * d) + g) - c) - (2 * f)) - i
+  y-energy = (((a + (2 * b) + c) - g) - (2 * h)) - i
+  num-sqrt(num-sqr(x-energy) + num-sqr(y-energy))
+where:
+  energy-formula(0,0,0,3,0,0,0,0) is-roughly 6
+  energy-formula(0,0,0,3,6,0,0,0) is-roughly 6
+  energy-formula(0,0,0,0,0,0,0,0) is-roughly 0
+  energy-formula(1,2,3,0,0,0,0,0) is-roughly num-sqrt(68)
+  energy-formula(1,2,3,4,5,6,0,0) is-roughly num-sqrt(8)
+end
+
+fun pixel-energy(all-pixels :: List<List<Color>>, 
+    pix-row :: Number, 
+    pix-col :: Number) -> Number:
+  doc: ```returns the energy of a single pixel given its row and column```
+  #single row image
+  ask:
+    | all-pixels.length() == 1 then:
+      ask:
+        | pix-col == 0 then: #leftmost column
+          f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+          f = brightness(f-pixel)
+          energy-formula(0,0,0,0,f,0,0,0)
+        | pix-col == (all-pixels.get(0).length() - 1) then: #rightmost col
+          d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+          d = brightness(d-pixel)
+          energy-formula(0,0,0,d,0,0,0,0)
+        | otherwise:
+          f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+          f = brightness(f-pixel)
+          d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+          d = brightness(d-pixel)
+          energy-formula(0,0,0,d,f,0,0,0)
+      end
+    | pix-row == 0 then:
+      ask:
+        | pix-col == 0 then:
+          f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+          f = brightness(f-pixel)
+          h-pixel = all-pixels.get(pix-row + 1).get(pix-col)
+          h = brightness(h-pixel)
+          i-pixel = all-pixels.get(pix-row + 1).get(pix-col + 1)
+          i = brightness(i-pixel)
+          energy-formula(0,0,0,0,f,0,h,i)
+        | pix-col == (all-pixels.get(0).length() - 1) then:
+          d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+          d = brightness(d-pixel)
+          g-pixel = all-pixels.get(pix-row + 1).get(pix-col - 1)
+          g = brightness(g-pixel)
+          h-pixel = all-pixels.get(pix-row + 1).get(pix-col)
+          h = brightness(h-pixel)
+          energy-formula(0,0,0,d,0,g,h,0)
+        | otherwise:
+          d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+          d = brightness(d-pixel)
+          f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+          f = brightness(f-pixel)
+          g-pixel = all-pixels.get(pix-row + 1).get(pix-col - 1)
+          g = brightness(g-pixel)
+          h-pixel = all-pixels.get(pix-row + 1).get(pix-col)
+          h = brightness(h-pixel)
+          i-pixel = all-pixels.get(pix-row + 1).get(pix-col + 1)
+          i = brightness(i-pixel)
+          energy-formula(0,0,0,d,f,g,h,i)
+      end
+    | pix-row == (all-pixels.length() - 1) then:
+      ask:
+        | pix-col == 0 then:
+          b-pixel = all-pixels.get(pix-row - 1).get(pix-col)
+          b = brightness(b-pixel)
+          c-pixel = all-pixels.get(pix-row - 1).get(pix-col + 1)
+          c = brightness(c-pixel)
+          f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+          f = brightness(f-pixel)
+          energy-formula(0,b,c,0,f,0,0,0)
+        | pix-col == (all-pixels.get(0).length() - 1) then:
+          a-pixel = all-pixels.get(pix-row - 1).get(pix-col - 1)
+          a = brightness(a-pixel)
+          b-pixel = all-pixels.get(pix-row - 1).get(pix-col)
+          b = brightness(b-pixel)
+          d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+          d = brightness(d-pixel)
+          energy-formula(a,b,0,d,0,0,0,0)
+        | otherwise:
+          a-pixel = all-pixels.get(pix-row - 1).get(pix-col - 1)
+          a = brightness(a-pixel)
+          b-pixel = all-pixels.get(pix-row - 1).get(pix-col)
+          b = brightness(b-pixel)
+          c-pixel = all-pixels.get(pix-row - 1).get(pix-col + 1)
+          c = brightness(c-pixel)
+          d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+          d = brightness(d-pixel)
+          f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+          f = brightness(f-pixel)
+          energy-formula(a,b,c,d,f,0,0,0)
+      end
+    | pix-col == 0 then:
+      b-pixel = all-pixels.get(pix-row - 1).get(pix-col)
+      b = brightness(b-pixel)
+      c-pixel = all-pixels.get(pix-row - 1).get(pix-col + 1)
+      c = brightness(c-pixel)
+      f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+      f = brightness(f-pixel)
+      h-pixel = all-pixels.get(pix-row + 1).get(pix-col)
+      h = brightness(h-pixel)
+      i-pixel = all-pixels.get(pix-row + 1).get(pix-col + 1)
+      i = brightness(i-pixel)
+      energy-formula(0,b,c,0,f,0,h,i)
+    | pix-col == (all-pixels.get(0).length() - 1) then:
+      a-pixel = all-pixels.get(pix-row - 1).get(pix-col - 1)
+      a = brightness(a-pixel)
+      b-pixel = all-pixels.get(pix-row - 1).get(pix-col)
+      b = brightness(b-pixel)
+      d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+      d = brightness(d-pixel)
+      g-pixel = all-pixels.get(pix-row + 1).get(pix-col - 1)
+      g = brightness(g-pixel)
+      h-pixel = all-pixels.get(pix-row + 1).get(pix-col)
+      h = brightness(h-pixel)
+      energy-formula(a,b,0,d,0,g,h,0)
+    | otherwise:
+      a-pixel = all-pixels.get(pix-row - 1).get(pix-col - 1)
+      a = brightness(a-pixel)
+      b-pixel = all-pixels.get(pix-row - 1).get(pix-col)
+      b = brightness(b-pixel)
+      c-pixel = all-pixels.get(pix-row - 1).get(pix-col + 1)
+      c = brightness(c-pixel)
+      d-pixel = all-pixels.get(pix-row).get(pix-col - 1)
+      d = brightness(d-pixel)
+      f-pixel = all-pixels.get(pix-row).get(pix-col + 1)
+      f = brightness(f-pixel)
+      g-pixel = all-pixels.get(pix-row + 1).get(pix-col - 1)
+      g = brightness(g-pixel)
+      h-pixel = all-pixels.get(pix-row + 1).get(pix-col)
+      h = brightness(h-pixel)
+      i-pixel = all-pixels.get(pix-row + 1).get(pix-col + 1)
+      i = brightness(i-pixel)
+      energy-formula(a,b,c,d,f,g,h,i)
+  end
+where:
+  pixel-energy(one-row-img, 0, 0) is-roughly 12
+  pixel-energy(one-row-img, 0, 2) is-roughly 12
+  pixel-energy(one-row-img, 0, 1) is-roughly 18
+  pixel-energy(three-row-img, 0, 0) is-roughly num-sqrt(648)
+  pixel-energy(three-row-img, 0, 2) is-roughly num-sqrt(1620)
+  pixel-energy(three-row-img, 0, 1) is-roughly num-sqrt(1818)
+  pixel-energy(three-row-img, 1, 0) is-roughly 24
+  pixel-energy(three-row-img, 2, 0) is-roughly num-sqrt(648)
+end
+
+fun all-energies(all-pixels :: List<List<Color>>, 
+    pix-row :: Number, 
+    pix-col :: Number, energies :: List<List<Number>>) -> List<List<Number>>:
+  doc:```returns the energies of all the pixels in an image starting at
+      pix-row and pix-col```
+  current-nrg = pixel-energy(all-pixels, pix-row, pix-col)
+  ask:
+    | pix-col == (all-pixels.get(0).length() - 1) then:
+      if (all-pixels.length() == 1) or 
+        (pix-row == (all-pixels.length() - 1)):
+        [list: energies.append([list: current-nrg])]
+      else:
+        link(energies.append([list: current-nrg]), all-energies(
+            all-pixels, pix-row + 1, 0, empty))
+      end
+    | otherwise:
+      all-energies(all-pixels, 
+          pix-row, 
+          pix-col + 1,
+        energies.append([list: current-nrg]))
+  end
+where:
+  all-energies(one-row-img, 0, 0, empty) is [list: [list: 12, 18, 12]]
+  all-energies(three-row-img, 0, 0, empty) is-roughly
+  [list: [list: num-sqrt(648), num-sqrt(1818), num-sqrt(1620)],
+    [list: 24, 36, 24],
+    [list: num-sqrt(648), num-sqrt(1818), num-sqrt(1620)]]
+end
+
+fun take-out-pixel(pix-row :: List<Color>, index :: Number) -> List<Color>:
+  doc: ```removes a pixel from a row```
+  cases (List) pix-row:
+    | empty => raise("Index goes beyond list")
+    | link(f, r) =>
+      if index == 0:
+        r
+      else:
+        link(f, take-out-pixel(r, index - 1))
+      end
+  end
+where:
+  take-out-pixel(one-row-img.get(0), 1) is 
+  [list: color(1, 2, 3), color(4, 5, 6)]
+  take-out-pixel(one-row-img.get(0), 3) raises "Index goes beyond list"
+end
+
+fun take-out-seam(seam :: List<Number>, all-pixels :: List<List<Color>>) -> 
+  List<List<Color>>:
+  doc: ```removes pixels identified by seam in all-pixels```
+  cases (List) all-pixels:
+    | empty => empty
+    | link(f, r) =>
+      cases (List) seam:
+        | empty => raise("seam is too short for image") 
+        | link(ff, rr) =>
+          link(take-out-pixel(f, ff), take-out-seam(rr, r))
+      end
+  end
+where:
+  take-out-seam([list: 0], one-row-img) is 
+  [list: [list: color(3, 2, 1), color(4, 5, 6)]]
+  take-out-seam([list: 1, 2], three-row-img) raises
+  "seam is too short for image"
+  take-out-seam([list: 1, 2, 1], three-row-img) is
+  [list: [list: color(1, 2, 3), color(4, 5, 6)], 
+    [list: color(1, 2, 3), color(3, 2, 1)], 
+    [list: color(1, 2, 3), color(4, 5, 6)]]
+end
+
+fun lowest-energy-seam(all-seams :: List<Seam-Energy>, 
+    current-nrg :: Option<Seam-Energy>) -> Seam-Energy:
+  doc: ```returns datatype seam-energy that corresponsd to the seam with the
+       lowest energy```
+  cases (List) all-seams:
+    | empty =>
+      current-nrg.value
+    |link(f, r) =>
+      cases (Option) current-nrg:
+        | none =>
+          lowest-energy-seam(all-seams, some(f))
+        |some(val) =>
+          if f.energy < val.energy:
+            lowest-energy-seam(r, some(f))
+          else:
+            lowest-energy-seam(r, current-nrg)
+          end
+      end
+  end
+where:
+  lowest-energy-seam([list: seam-energy([list: 1, 2, 3], 10), 
+      seam-energy([list: 1, 4, 5], 15)], none) is 
+  seam-energy([list: 1, 2, 3], 10)
+  lowest-energy-seam([list: seam-energy([list: 1, 2, 3], 10), 
+      seam-energy([list: 1, 4, 5], 15), 
+      seam-energy([list: 4, 5, 6], 10)], none) is
+  seam-energy([list: 1, 2, 3], 10)
+end
+
+fun memoize-arrays(f :: (Image, Number, Number, List<List<Number>> -> 
+      List<Number>), 
+    width :: Number,
+    height :: Number) -> 
+  (Number, Number, Image, List<List<Number>> -> Number):
+  doc: ```stores values for commputations made by liquify-memoization```
+  var memory :: Array<Option<List<Number>>> = 
+    build-array(lam(x): none end, width * height)
+  
+  lam(img :: Image, 
+      row :: Number,
+      col :: Number, 
+      filled-energies :: List<List<Number>>):
+    length-of-row = img.pixels.get(0).length()
+    location = (row * length-of-row) + col
+    val = memory.get-now(location)
+    cases (Option) val block:
+      | none =>
+        result = f(img, row, col, filled-energies)
+        memory.set-now(location, some(result))
+        result
+      | some(elt) => 
+        elt
+    end
+  end
+end
+
+fun energy-of-seam(seam :: List<Number>, 
+    og-seam :: List<Number>, 
+    pix-row :: Number, 
+    energy :: Number, all-energy :: List<List<Number>>) ->
+  Seam-Energy:
+  doc: ```returns a seam-energy datatype which stores a seam with
+       the sum of the energies in its pixels```
+  cases (List) seam:
+    | empty =>
+      seam-energy(og-seam, energy)
+    | link(f, r) =>
+      energy-of-seam(r, og-seam, pix-row + 1, 
+        all-energy.get(pix-row).get(f) + energy, all-energy)
+  end
+end
+
+fun liquify-memoization(input :: Image, n :: Number) -> Image:
+  doc: ```returns an image with the width of the original image
+       shortened by n columns```
+  ask:
+    | n == 0 then:
+      input
+    | otherwise:
+      all-pixels = input.pixels
+      all-energ = all-energies(all-pixels, 0, 0, empty)
+      # put vertical seams inside function so I could reference the image
+      rec vertical-seam = 
+        memoize-arrays(
+          lam(img :: Image, pix-row, pix-col, all-energy :: List<List<Number>>):
+            ask:
+              | (pix-row + 1) == all-pixels.length() then:
+                [list: pix-col]
+              | pix-col == 0 then:
+                pixel1 = all-energy.get(pix-row + 1).get(pix-col)
+                pixel2 = all-energy.get(pix-row + 1).get(pix-col + 1)
+                if pixel1 < pixel2:
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col, 
+                      all-energy))
+                else:
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col + 1, 
+                      all-energy))
+                end
+              | pix-col == (all-pixels.get(0).length() - 1) then:
+                pixel1 = all-energy.get(pix-row + 1).get(pix-col)
+                pixel3 = all-energy.get(pix-row + 1).get(pix-col - 1)
+                if pixel1 < pixel3:
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col,  
+                      all-energy))
+                else:
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col - 1,  
+                      all-energy))
+                end
+              | otherwise:
+                pixel1 = all-energy.get(pix-row + 1).get(pix-col)
+                pixel2 = all-energy.get(pix-row + 1).get(pix-col + 1)
+                pixel3 = all-energy.get(pix-row + 1).get(pix-col - 1)
+                if (pixel1 < pixel2) and (pixel1 < pixel3):
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col, 
+                      all-energy))
+                else if (pixel2 < pixel1) and (pixel2 < pixel3):
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col + 1,  
+                      all-energy))
+                else:
+                  link(pix-col, vertical-seam(img, pix-row + 1, pix-col - 1, 
+                      all-energy))
+                end
+            end
+          end,
+          input.pixels.length(), input.pixels.get(0).length())
+
+      
+      all-seams = map(
+        lam(x): vertical-seam(input, 0, x, all-energ) end, 
+        range(0, all-pixels.get(0).length()))
+      all-seam-energies = 
+        map(lam(x): energy-of-seam(x, x, 0, 0, all-energ)end, 
+          all-seams)
+      result = take-out-seam(
+        lowest-energy-seam(all-seam-energies, none).seam, 
+        all-pixels)
+      liquify-memoization(image-data-to-image(result.get(0).length(),
+          result.length(), result), n - 1)
+  end
+end
+
+three-row-img = [list: [list: color(1, 2, 3), color(3, 2, 1), color(4, 5, 6)], 
+  [list: color(1, 2, 3), color(3, 2, 1), color(4, 5, 6)], 
+  [list: color(1, 2, 3), color(3, 2, 1), color(4, 5, 6)]]
+one-row-img = [list: [list: color(1, 2, 3), color(3, 2, 1), color(4, 5, 6)]]
+
+check:
+  liquify-memoization(image-data-to-image(3, 1, one-row-img), 1).pixels is 
+  [list: [list: color(3, 2, 1), color(4, 5, 6)]]
+  liquify-memoization(image-data-to-image(3, 3, three-row-img), 1).pixels is
+  [list: [list: color(3, 2, 1), color(4, 5, 6)], 
+    [list: color(3, 2, 1), color(4, 5, 6)], 
+    [list: color(3, 2, 1), color(4, 5, 6)]]
+  liquify-memoization(image-data-to-image(3, 1, one-row-img), 0) is 
+  image-data-to-image(3, 1, one-row-img)
+  liquify-dynamic-programming(image-data-to-image(3, 1, one-row-img), 0) is 
+  image-data-to-image(3, 1, one-row-img)
+  liquify-dynamic-programming(image-data-to-image(3, 1, one-row-img), 1).pixels 
+    is [list: [list: color(3, 2, 1), color(4, 5, 6)]]
+  liquify-dynamic-programming(image-data-to-image(
+      3, 3, three-row-img), 1).pixels is 
+  [list: [list: color(3, 2, 1), color(4, 5, 6)], 
+    [list: color(3, 2, 1), color(4, 5, 6)], 
+    [list: color(3, 2, 1), color(4, 5, 6)]]
+end
