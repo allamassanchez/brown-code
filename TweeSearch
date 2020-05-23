@@ -1,0 +1,329 @@
+import lists as L
+
+fun lower-all(los :: List<String>) -> List<String>:
+  doc: ```takes in a list of strings and 
+       returns the list with all strings in lowercase```
+  cases (List) los:
+    | empty =>
+      empty
+    | link(f, r) =>
+      link(string-to-lower(f), lower-all(r))
+  end
+end
+
+check "lower-all":
+  lower-all(empty) is empty
+  lower-all([list: "Hello"]) is [list: "hello"]
+  lower-all([list: "bye"]) is [list: "bye"]
+  lower-all([list: "Hello", "HAI", "bye", "helLo"]) is 
+  [list: "hello", "hai", "bye", "hello"]
+end
+
+fun list-of-unique-words(a :: List<String>, b :: List<String>) -> List<String>:
+  doc: "takes in 2 lists, appends b to a with all duplicates removed"
+  L.distinct(lower-all(a).append(lower-all(b)))
+end
+
+check "list-of-unique-words":
+  list-of-unique-words(empty, empty) is empty
+  list-of-unique-words(empty, [list: "hello"]) is [list: "hello"]
+  list-of-unique-words(empty, [list: "heLLo"]) is [list: "hello"]
+  list-of-unique-words([list: "hello", "HEllo"], [list: "heLLo"]) is 
+  [list: "hello"]
+  list-of-unique-words([list: "hello", "hi", "hi"], [list: "BYE", "hI"]) is 
+  [list: "hello", "bye", "hi"]
+end
+
+fun count-occurrences(unique-string :: String, lower-list :: List<String>) -> 
+  Number:
+  doc: ``` takes in a string and a lists of strings
+  counts appearances of unique-string in lower-list ```
+  cases (List) lower-list:
+    | empty =>
+      0
+    | link(f, r) =>
+      if string-equal(unique-string, f):
+        1 + count-occurrences(unique-string, r)
+      else: 
+        count-occurrences(unique-string, r)
+      end
+  end
+end
+
+check "count-occurrences":
+  count-occurrences("hai", empty) is 0
+  count-occurrences("hai", [list:"hai"]) is 1
+  count-occurrences("hai", [list: "bye", "hello"]) is 0
+  count-occurrences("hai", [list: "bye", "hai", "hello", "hai"]) is 2
+  count-occurrences("i", [list: "bye", "hai", "hello", "hai"]) is 0
+end
+
+fun occurrences(low :: List<String>, lower-list :: List<String>) -> 
+  List<Number>:
+  doc: 
+  ``` takes in two lists of strings
+    counts how many times each word in list-of-words appears in lower-list
+    returns a list of numbers ```
+  cases (List) low:
+    | empty =>
+      empty
+    | link(f, r) =>
+      link(count-occurrences(f, lower-list), occurrences(r, lower-list))
+  end
+end
+
+check "occurrences":
+  occurrences(empty, empty) is empty
+  occurrences([list: "hai", "hello"], empty) is [list: 0, 0]
+  occurrences([list: "hai", "hello"], [list: "hai", "hai", "hai"]) is 
+  [list: 3, 0]
+  occurrences([list: "hai", "hello"], [list:"hello", "hello", "hai"]) is
+  [list: 1, 2]
+end
+
+fun magnitude(vector :: List<Number>) -> Number:
+  doc: ```takes in a list of integers and 
+  calculates the magnitude, returns a number```
+  num-sqrt((vector.map(num-sqr)).foldl(lam(first, rest): first + rest end, 0))
+end
+
+check "magnitude":
+  magnitude([list: 3, 5]) is-roughly num-sqrt(34)
+  magnitude([list: 0]) is 0
+end
+
+fun dot-product(one-vector :: List<Number>, two-vector :: List<Number>) -> 
+  Number:
+  doc: "takes in two lists of integers and calculates the dot product"
+  cases (List) one-vector:
+    | empty =>
+      0
+    | link(f, r) =>
+      (f * two-vector.first) + dot-product(r, two-vector.rest)
+  end
+end
+
+
+check "dot-product":
+  dot-product([list: 1, 2, 3], [list: 4, 5, 6]) is 32
+  dot-product(empty, empty) is 0
+  dot-product([list: 1, 3, 2], [list: 4, 6, 5]) is 32
+  dot-product([list: 1, 3, 2], [list: 4, 5, 6]) is 31
+end
+
+fun overlap(a :: List<String>, b :: List<String>) -> Number:
+  doc: ```takes two nonempty lists of strings and returns a numeric value for 
+  overlap```
+  lower-a = lower-all(a)
+  lower-b = lower-all(b)
+  list-of-unique = list-of-unique-words(lower-a, lower-b)
+  vector-1 = occurrences(list-of-unique, lower-a)
+  vector-2 = occurrences(list-of-unique, lower-b)
+  magnitude-1 = magnitude(vector-1)
+  magnitude-2 = magnitude(vector-2)
+  (dot-product(vector-1, vector-2)) / 
+  num-max(num-sqr(magnitude-1), num-sqr(magnitude-2))
+end
+
+check "overlap":
+  overlap([list: "Hello", "my"], [list: "is", "my", "hello"]) is-roughly 2/3
+  overlap([list: "Hello", "my"], [list: "is", "bye", "try"]) is 0
+  overlap([list: "Hello", "my"], [list: "is", "MY", "hello", "mY"]) 
+    is-roughly 1/2
+  overlap([list: "hello", "MY"], [list: "heLLo", "my"]) is-roughly 1
+  overlap([list: "Hello"], [list: "is", "my", "hello"]) is-roughly 1/3
+  overlap([list: "3", "true", "!"], [list: "true", "try"]) is-roughly 1/3
+  overlap([list: "Hello", "my"], [list: "Hello", "my"]) is-roughly 1
+  overlap([list: "Hello", "my try", "bye"], [list: "Helol", "my", " ", ""]) is 0
+  overlap([list: " ", "", "bye"], [list: " ", "try"]) is-roughly 1/3
+end
+
+data ThreshTweet:
+    threshtweet( og-tweet :: Tweet, threshold :: Number)
+end
+
+fun clean-string(s :: String) -> List<Number>:
+  doc: ```retains only alphanumeric characters of a string```
+  alphanumeric = range(48, 58).append(
+    range(65, 91)).append(
+    range(97, 123)).append(
+    [list: 32])
+  loc = string-to-code-points(s)
+  cases (List) loc:
+    |empty => empty
+    | link(f, r) =>
+      if alphanumeric.member(f):
+          link(f, clean-string(string-from-code-points(r)))
+      else:
+        clean-string(string-from-code-points(r))
+      end
+    end
+end
+
+check:
+  string-from-code-points(clean-string(" ")) is " "
+  string-from-code-points(clean-string("hello! there")) is "hello there"
+  string-from-code-points(clean-string("helLo! there")) is "helLo there"
+end
+
+fun new-overlap(a-tweet :: Tweet, another-tweet :: Tweet) -> Number:
+  doc: ```calculates overlap taking into consideration parent tweeets```
+  ot = overlap(string-split-all(string-from-code-points(
+                clean-string(a-tweet.content)), " "), 
+            string-split-all(string-from-code-points(
+        clean-string(another-tweet.content)), " "))
+  if another-tweet.parent == none:
+    ot
+  else:
+    op = new-overlap(a-tweet, another-tweet.parent.value)
+    (0.25 * op) + (0.75 * ot)
+  end
+end
+
+check "new-overlap":
+  new-overlap(intro-tweet, beach-tweet) is 0.25
+  new-overlap(cook-tweet, intro-tweet) is 0
+end
+
+fun map-overlap(a-tweet :: Tweet, many-tweets :: List<Tweet>) -> 
+  List<ThreshTweet>:
+  doc: ```takes a tweet and finds the overlap with all tweets from 
+       many-tweets
+       returns this information in a list of the data type TreshTweet```
+  cases (List) many-tweets:
+    | empty => empty
+    | link(f, r) =>
+      link(threshtweet(f, new-overlap(a-tweet, f)), map-overlap(a-tweet, r))
+  end
+end
+
+check "map-overlap":
+  map-overlap(intro-tweet, empty) is empty
+  map-overlap(intro-tweet, [list: complex-tweet, cook-tweet]) is
+  [list: 
+    threshtweet(complex-tweet, new-overlap(intro-tweet, complex-tweet)), 
+    threshtweet(cook-tweet, 0)]
+end
+
+fun include-parents(a-tweet :: Tweet) -> List<Tweet>:
+  doc: ```returns a list of a-tweet and all its parent tweets```
+  if a-tweet. parent == none:
+    [list: a-tweet]
+  else:
+    link(a-tweet, include-parents(a-tweet.parent.value))
+  end
+end
+
+check "include-parents":
+  include-parents(hi-tweet) is [list: hi-tweet]
+  include-parents(complex-tweet) is [list: complex-tweet, intro-tweet]
+end
+
+fun parents-from-list(some-tweets :: List<Tweet>) -> List<Tweet>:
+  doc: ```returns the list of all tweet threads with tweets in some-tweets```
+  cases (List) some-tweets:
+    | empty => empty
+    | link(f, r) =>
+      include-parents(f).append(parents-from-list(r))
+  end
+end
+
+check "parents-from-list":
+  parents-from-list(empty) is empty
+  parents-from-list([list: hi-tweet]) is [list: hi-tweet]
+  parents-from-list([list: hi-tweet, complex-tweet]) is 
+  [list: hi-tweet, complex-tweet, intro-tweet]
+end
+
+fun my-member(alot :: List<Tweet>, a-tweet :: Tweet) -> Boolean:
+  doc: ```returns true if a-tweet is identical to any tweet in list alot```
+  cases (List) alot:
+    | empty =>
+      false
+    | link(f, r) =>
+      if not(identical(f, a-tweet)):
+        my-member(r, a-tweet)
+      else:
+        true
+      end
+  end
+end
+
+check "my-member":
+  my-member(empty, intro-tweet) is false
+  my-member([list: intro2-tweet, complex-tweet], intro-tweet) is false
+  my-member([list: intro-tweet, complex-tweet], intro-tweet) is true
+end
+
+fun my-unique(alot :: List<Tweet>) -> List<Tweet>:
+  doc: ```returns a list of tweets without any identical tweets```
+  cases (List) alot:
+    | empty => empty
+    | link(f, r) =>
+      if not(my-member(r, f)):
+        link(f, my-unique(r))
+      else:
+        my-unique(r)
+      end
+  end
+end
+
+check "my-unique":
+  my-unique(empty) is empty
+  my-unique([list: intro-tweet]) is [list: intro-tweet]
+  my-unique([list: intro-tweet, intro-tweet, intro-tweet]) is 
+  [list: intro-tweet]
+end
+
+fun search(
+    search-tweet :: Tweet, 
+    alot :: List<Tweet>, 
+    threshold :: Number) 
+  -> List<Tweet>:
+    search-list = my-unique(parents-from-list(alot))
+  list-of-threshtweets = map-overlap(search-tweet, search-list)
+  tweets-meet-thresh = list-of-threshtweets.filter(
+    lam(x): num-exact(x.threshold) >= (threshold - 0.0000001) end)
+    (tweets-meet-thresh.sort-by(
+    lam(x, y): num-exact(x.threshold) > num-exact(y.threshold) end,
+      lam(x, y): num-exact(x.threshold) == num-exact(y.threshold) end)).map(
+    lam(x): x.og-tweet end)
+end
+
+#tests 
+
+intro-tweet = tweet("hello", "world", none)
+intro2-tweet = tweet("hello", "world", none)
+intro3-tweet = tweet("hello", "world?!?!?!", none)
+complex-tweet = tweet("hi", "the world is awesome", some(intro-tweet))
+complex2-tweet = tweet("hi", "the world is awesome", some(intro2-tweet))
+complexer-tweet = tweet("hey", "why hello there world", some(intro-tweet))
+cook-tweet = tweet("cooking", "cooking is cool", none)
+beach-tweet = tweet("beaches", "hello beaches", some(intro-tweet))
+hi-tweet = tweet("hi", "world", none)
+hi-Tweet = tweet("Hi", "World", none)
+intr0-tw33t = tweet("h3ll0", "w0rld", none)
+c0mpl3x-t33t = tweet("h1", "th3 w0rld 1s 4w3s0m3", none)
+
+check:
+  # checks parent tweets
+  search(intro-tweet, [list: complexer-tweet], 0.5) is [list: intro-tweet]
+  # removes identical parents
+  search(intro-tweet, [list: complex-tweet, complexer-tweet], 0.5) is 
+  [list: intro-tweet]
+  # handles empty list case
+  search(intro-tweet, empty, 0.5) is empty
+  # handles equal relevance
+  search(intro-tweet, [list: complex-tweet, complex2-tweet], 0.5).member(
+    intro-tweet) is true
+  search(intro-tweet, [list: complex-tweet, complex2-tweet], 0.5).member(
+    intro2-tweet) is true
+  search(intro-tweet, [list: complex-tweet, complex2-tweet], 0.5).length() is 2
+  #is-sorted(search(intro-tweet, [list: complex-tweet, complex2-tweet], 0.5)) 
+  #is true
+  # cleans strings before checking relevance
+  search(intro-tweet, [list: intro3-tweet], 1) is [list: intro3-tweet]
+  # descending order of relevance
+  search(intro-tweet, [list: c0mpl3x-t33t, complex-tweet], 0) is 
+  [list: intro-tweet, complex-tweet, c0mpl3x-t33t]
+end
