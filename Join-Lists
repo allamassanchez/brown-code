@@ -1,0 +1,289 @@
+fun j-first<A>(jl :: JoinList<A>%(is-non-empty-jl)) -> A:
+  doc: ```returns the first element of joinlist jl```
+  cases (JoinList) jl:
+    | empty-join-list => raise("error")
+    | one(elt) => elt
+    | join-list(_, _, _) =>
+      split(jl, lam(x,y): j-first(x) end)
+  end
+end
+
+
+fun j-rest<A>(jl :: JoinList<A>%(is-non-empty-jl)) -> JoinList<A>:
+  doc: ```returns a join list that excludes the first element of jl```
+  cases (JoinList) jl:
+    | empty-join-list => raise("error")
+    | one(elt) => empty-join-list
+    | join-list(_, _, _) =>
+      # lambda checks if rest of x is empty and returns y instead
+      split(jl, lam(x, y): if j-rest(x) == empty-join-list: y
+        else: j-rest(x).join(y) end end)
+  end
+end
+  
+  
+fun j-length<A>(jl :: JoinList<A>) -> Number:
+  doc: ```returns the lengths of joinlist jl```
+  cases (JoinList) jl:
+    | empty-join-list => 0
+    | one(elt) => 1
+    | join-list(_, _, _) =>
+      #lambda makes recursive call to get the length of each list and adds them
+      split(jl, lam(x, y): j-length(x) + j-length(y) end)
+  end
+end
+
+
+fun j-nth<A>(jl :: JoinList<A>%(is-non-empty-jl),
+    n :: Number) -> A:
+  doc: ```returns the nth element of jl using a 0 based index```
+  cases (JoinList) jl:
+    | empty-join-list => raise("error")
+    | one(elt) => elt
+    | join-list(_, _, _) =>
+      #lambda checks where n is in relation to joinlist x and joinlist y
+      #discards the joinlist where n is not located
+      split(jl, lam(x, y): if n == 0: j-first(x)
+          else if n < j-length(x): j-nth(j-rest(x), n - 1)
+        else: j-nth(y, n - j-length(x))end end)
+  end
+end
+
+
+fun j-max<A>(jl :: JoinList<A>%(is-non-empty-jl), 
+    cmp :: (A, A -> Boolean)) -> A:
+  doc: ```returns the max of a joinlist where the comparison for max is
+       determined by the function cmp```
+  cases (JoinList) jl:
+    | empty-join-list => raise("error")
+    | one(elt) => elt
+    | join-list(_, _, _) =>
+      #lambda makes recursive call to find the max of each joinlist
+      #then compares the max from each list
+      split(jl, lam(x, y): if cmp(j-max(x, cmp), j-max(y, cmp)): j-max(x, cmp)
+        else: j-max(y, cmp) end end)
+  end
+end
+
+
+fun j-map<A,B>(map-fun :: (A -> B), jl :: JoinList<A>) -> JoinList<B>:
+  doc: ```returns a joinlist where map-fun was mapped to each element in jl```
+  cases (JoinList) jl:
+    | empty-join-list => empty-join-list
+    | one(elt) => one(map-fun(elt))
+    | join-list(_, _, _) =>
+      #lambda makes recursive call to apply function to both joinlists
+      #joins mapped joinlists
+      split(jl, lam(x, y): j-map(map-fun, x).join(j-map(map-fun, y)) end)
+  end
+end
+
+
+fun j-filter<A>(filter-fun :: (A -> Boolean), jl :: JoinList<A>) -> JoinList<A>:
+  doc: ```returns the values of a joinlist that return true based on function
+       filter-fun```
+  cases (JoinList) jl:
+    | empty-join-list => empty-join-list
+    | one(elt) => 
+      if filter-fun(elt):
+        one(elt)
+      else:
+        empty-join-list
+      end
+    | join-list(list1, list2, _) =>
+      #lambda makes recursive call to filter both joinlists then joins them
+      split(jl, lam(x, y): 
+        j-filter(filter-fun, x).join(j-filter(filter-fun, y)) end)
+  end
+end
+
+
+fun j-reduce<A>(reduce-fun :: (A, A -> A), 
+    jl :: JoinList<A>%(is-non-empty-jl)) -> A:
+  doc: ```returns a single value by applying a function to a base case
+       and the values of a join list
+       takes the answer from eah operation as its next base case```
+  cases (JoinList) jl:
+    | empty-join-list => raise("error")
+    | one(elt) => elt
+    | join-list(_, _, _) =>
+      #lambda makes recursive call to reduce both joinlists
+      #then uses both answers in reduction function
+      split(jl, lam(x, y): 
+        reduce-fun(j-reduce(reduce-fun, x), j-reduce(reduce-fun, y)) end)
+  end
+end
+
+fun join-sorted<A>(cmp-fun :: (A, A -> Boolean), join1 :: JoinList<A>, 
+    join2 :: JoinList<A>) -> JoinList<A>:
+  doc: ```returns a joinlist of two sorted functions and ensures
+       resulting joinlist is also sorted```
+  cases (JoinList) join1:
+    | empty-join-list => join2
+    | one(elt) => 
+      if join2 == empty-join-list:
+        one(elt)
+      else if cmp-fun(elt, j-first(join2)):
+        one(elt).join(j-sort(cmp-fun, join2))
+      else:
+        one(j-first(join2)).join(join-sorted(cmp-fun, join1, j-rest(join2)))
+      end
+    | join-list(_, _, _) =>
+      if join2 == empty-join-list:
+        join1
+      else if cmp-fun(j-first(join1), j-first(join2)):
+        one(j-first(join1)).join(j-sort(cmp-fun, j-rest(join1).join(
+              j-sort(cmp-fun, join2))))
+      else:
+        one(j-first(join2)).join(j-sort(cmp-fun, join1.join(
+              j-sort(cmp-fun, j-rest(join2)))))
+      end
+  end
+end
+
+check "join-sorted":
+  join-sorted(lam(x, y): if x <= y: true else: false end end, empty-join-list, 
+    list-to-join-list([list: 3, 4, 5])) is list-to-join-list([list: 3, 4, 5])
+      join-sorted(lam(x, y): if x <= y: true else: false end end, 
+        list-to-join-list([list: 3, 4, 5]), list-to-join-list([list: 1, 2])) is 
+  list-to-join-list([list: 1, 2, 3, 4, 5])
+   join-sorted(lam(x, y): if x <= y: true else: false end end, 
+    one(3), list-to-join-list([list: 1, 2, 4])) is 
+  list-to-join-list([list: 1, 2, 3, 4])
+end
+
+fun j-sort<A>(cmp-fun :: (A, A -> Boolean), jl :: JoinList<A>) -> JoinList<A>:
+  doc: ```sorts a joinlist based on the sorting function cmp-fun```
+  cases (JoinList) jl:
+    | empty-join-list => empty-join-list
+    | one(elt) => one(elt)
+    | join-list(_, _, _) =>
+      split(jl, lam(x, y):
+        join-sorted(cmp-fun, j-sort(cmp-fun, x), j-sort(cmp-fun, y)) end)
+  end
+end
+
+check "j-first Test Cases":
+  j-first(one(1)) is 1
+  j-first(one("a")) is "a"
+  j-first(join-list(join-list(one(2), 
+        one(3), 2), join-list(one(1), one(2), 2), 4)) is 2
+end
+  
+check "j-rest Test Cases":
+  j-rest(join-list(join-list(one(2), 
+        one(3), 2), join-list(one(1), one(2), 2), 4)) is join-list( 
+    one(3), join-list(one(1), one(2), 2), 3)
+  j-rest(one(1)) is empty-join-list
+  j-rest(join-list(one("a"), one(3), 2)) is one(3)
+end
+  
+check "j-length Test Cases":
+  j-length(empty-join-list) is 0
+  j-length(one(1)) is 1
+  j-length(one("a")) is 1
+  j-length(join-list(one("a"), one(3), 2)) is 2
+  j-length(join-list(join-list(one("a"), one(3), 2), one(3), 3)) is 3
+end
+  
+check "j-nth Test Cases":
+  j-nth(join-list(join-list(one("a"), one(3), 2), one(3), 3), 0) is "a"
+  j-nth(join-list(join-list(one("a"), one(3), 2), one(4), 3), 1) is 3
+  j-nth(join-list(join-list(one("a"), one(3), 2), one(4), 3), 2) is 4
+  j-nth(one("hi"), 0) is "hi"
+end
+  
+check "j-max Test Cases":
+  j-max(join-list(one(4), one(3),2), 
+      (lam(x, y): if x > y: true else: false end end)) is 4
+  j-max(join-list(one(3), one(3),2), 
+    (lam(x, y): if x > y: true else: false end end)) is 3
+  j-max(join-list(one(3), one(4),2), 
+    (lam(x, y): if x > y: true else: false end end)) is 4
+  j-max(one(1), (lam(x, y): if x > y: true else: false end end)) is 1
+end
+  
+check "j-map Test Cases":
+  j-map((lam(x): x + 1 end), join-list(join-list(one(1), one(3), 2), one(4), 3))
+      is join-list(join-list(one(2), one(4), 2), one(5), 3)
+  j-map((lam(x): x - 1 end), empty-join-list) is empty-join-list
+  j-map((lam(x): x - 1 end), one(16)) is one(15)
+end
+  
+check "j-filter Test Cases":
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3, 4, 5, 6])) is
+  list-to-join-list([list: 4, 5, 6])
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3])) is empty-join-list
+  j-filter(lam(x): x > 3 end, empty-join-list) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(2)) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(5)) is one(5)
+  # repetitions
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3, 4, 5, 6])) is
+  list-to-join-list([list: 4, 5, 6])
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3])) is empty-join-list
+  j-filter(lam(x): x > 3 end, empty-join-list) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(2)) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(5)) is one(5)
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3, 4, 5, 6])) is
+  list-to-join-list([list: 4, 5, 6])
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3])) is empty-join-list
+  j-filter(lam(x): x > 3 end, empty-join-list) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(2)) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(5)) is one(5)
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3, 4, 5, 6])) is
+  list-to-join-list([list: 4, 5, 6])
+  j-filter(lam(x): x > 3 end, 
+    list-to-join-list([list: 1, 2, 3])) is empty-join-list
+  j-filter(lam(x): x > 3 end, empty-join-list) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(2)) is empty-join-list
+  j-filter(lam(x): x > 3 end, one(5)) is one(5)
+end
+
+check "j-reduce Test Cases":
+  j-reduce(string-append, list-to-join-list([list: "hi", "how", "are", "you"]))
+    is "hihowareyou"
+  j-reduce(lam(x, y): x + y end, list-to-join-list([list: 4, 5, 6])) is 15
+  j-reduce(lam(x, y): x + y end, one(10)) is 10
+  # repetitions
+  j-reduce(string-append, list-to-join-list([list: "hi", "how", "are", "you"]))
+    is "hihowareyou"
+  j-reduce(string-append, list-to-join-list([list: "hi", "how", "are", "you"]))
+    is "hihowareyou"
+  j-reduce(string-append, list-to-join-list([list: "hi", "how", "are", "you"]))
+    is "hihowareyou"
+  j-reduce(string-append, list-to-join-list([list: "hi", "how", "are", "you"]))
+    is "hihowareyou"
+  j-reduce(lam(x, y): x + y end, list-to-join-list([list: 4, 5, 6])) is 15
+  j-reduce(lam(x, y): x + y end, list-to-join-list([list: 4, 5, 6])) is 15
+  j-reduce(lam(x, y): x + y end, list-to-join-list([list: 4, 5, 6])) is 15
+  j-reduce(lam(x, y): x + y end, list-to-join-list([list: 4, 5, 6])) is 15
+  j-reduce(lam(x, y): x + y end, one(10)) is 10
+  j-reduce(lam(x, y): x + y end, one(10)) is 10
+  j-reduce(lam(x, y): x + y end, one(10)) is 10
+  j-reduce(lam(x, y): x + y end, one(10)) is 10
+end
+
+check "j-sort Test Cases":
+  j-sort(lam(x, y): if x <= y: true else: false end end, 
+    empty-join-list) is empty-join-list
+  j-sort(lam(x, y): if x <= y: true else: false end end, 
+    list-to-join-list([list: 3, 1, 2])) is 
+  # repetitions
+  list-to-join-list([list: 1, 2, 3])
+  j-sort(lam(x, y): if x <= y: true else: false end end, 
+    list-to-join-list([list: 3, 1, 2])) is 
+  list-to-join-list([list: 1, 2, 3])
+  j-sort(lam(x, y): if x <= y: true else: false end end, 
+    list-to-join-list([list: 3, 1, 2])) is 
+  list-to-join-list([list: 1, 2, 3])
+  j-sort(lam(x, y): if x <= y: true else: false end end, 
+    list-to-join-list([list: 3, 1, 2])) is 
+  list-to-join-list([list: 1, 2, 3])
+end
